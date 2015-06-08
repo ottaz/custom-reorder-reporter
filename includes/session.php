@@ -29,7 +29,7 @@ function checksession(){
 			session_start();
 			$_SESSION['idle'] = time()+15*60;
 			$_SESSION['expired'] = false;
-			$_SESSION['cookies'] = array();
+			$_SESSION['cookies'] = null;
 		} 
 	}
 	
@@ -37,7 +37,7 @@ function checksession(){
 	else {
 		$_SESSION['idle'] = time()+15*60;
 		$_SESSION['expired'] = false;
-		$_SESSION['cookies'] = array();
+		$_SESSION['cookies'] = null;
 	}
 	
 }

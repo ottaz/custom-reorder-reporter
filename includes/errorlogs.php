@@ -7,38 +7,49 @@
  *
  */
 
-function log_action($string){
+function log_action($string)
+{
+	if (!file_exists(dirname(__FILE__).'/../logs')) {
+		@mkdir(dirname(__FILE__).'/../logs');
+	}
 
-$textfile = 'logs/logfile-'.date('MY').'.log';
-$tab = "\t"; $newline = "\r";
+	$textfile = 'logs/logfile-'.date('MY').'.log';
+	$tab = "\t"; $newline = "\r";
 
-if (!$handle = fopen($textfile, 'a')) 
-        die('Cannot open file: '.$textfile);
+	if (!$handle = fopen($textfile, 'a'))
+		die('Cannot open file: '.$textfile);
 
-if (fwrite($handle, "[".date('j M Y h:i:s a')."]".utf8_encode($tab).
-                        $string.utf8_encode($newline)
-            ) === false)
-       die('Cannot write to file: '.$textfile);
+	if (fwrite(
+			$handle,
+			"[".date('j M Y h:i:s a')."]".utf8_encode($tab).
+			$string.utf8_encode($newline)
+		) === false)
+		die('Cannot write to file: '.$textfile);
 
-fclose($handle);
-
+	fclose($handle);
 }
 
-function log_error($string){
-    
-$textfile = 'logs/logfile-'.date('MY').'.log';
-$tab = "\t"; $newline = "\r";
+function log_error($string)
+{
+	if (!file_exists(dirname(__FILE__).'/../logs'))
+	{
+		@mkdir(dirname(__FILE__).'/../logs');
+	}
 
-if (!$handle = fopen($textfile, 'a')) 
-        die('Cannot open file: '.$textfile);
+	$textfile = 'logs/logfile-'.date('MY').'.log';
+	$tab = "\t"; $newline = "\r";
 
-if (fwrite($handle, "[".date('j M Y h:i:s a')."]".utf8_encode($tab).
-                        $string.utf8_encode($newline)
-            ) === false)
-       die('Cannot write to file: '.$textfile);
+	if (!$handle = fopen($textfile, 'a'))
+		die('Cannot open file: '.$textfile);
 
-fclose($handle);
+	if (fwrite(
+			$handle,
+			"[".date('j M Y h:i:s a')."]".utf8_encode($tab).
+			$string.utf8_encode($newline)
+		) === false)
+		die('Cannot write to file: '.$textfile);
 
+	fclose($handle);
 }
 
 ?>

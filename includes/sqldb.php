@@ -21,27 +21,27 @@ date_default_timezone_set('America/New_York');
 function deletedb($link) {
     
     if (!$link)
-        exit("Could not connect mysql: " . mysql_error());
+        exit("Could not connect mysql: " . mysqli_error($link));
     else {
         log_action("connected successfully: mysql");
         
         
-        mysql_select_db("reorder_db", $link);
+        mysqli_select_db($link, "reorder_db");
         
-        if (mysql_query("DROP TABLE IF EXISTS Reorders", $link))
+        if (mysqli_query($link, "DROP TABLE IF EXISTS Reorders"))
             log_action("deleted successfully: Reorders");
         else
-            log_error("Error executing database query: " . mysql_error());
+            log_error("Error executing database query: " . mysqli_error($link));
         
-        if (mysql_query("DROP TABLE IF EXISTS Classes", $link))
+        if (mysqli_query($link, "DROP TABLE IF EXISTS Classes"))
             log_action("deleted successfully: Classes");
         else
-            log_error("Error executing database query: " . mysql_error());
+            log_error("Error executing database query: " . mysqli_error($link));
         
-        if (mysql_query("DROP TABLE IF EXISTS LastUpdated", $link))
+        if (mysqli_query($link, "DROP TABLE IF EXISTS LastUpdated"))
             log_action("deleted successfully: LastUpdated");
         else
-            log_error("Error executing database query: " . mysql_error());
+            log_error("Error executing database query: " . mysqli_error($link));
             
     }
 }
@@ -60,20 +60,20 @@ function deletedb($link) {
 function checkdbexists($link) {
 	
 if (!$link)
-	exit("Could not connect mysql: " . mysql_error());
+	exit("Could not connect mysql: " . mysqli_error($link));
 else {
 	log_action("connected successfully: mysql");
         
-	if (mysql_query("CREATE DATABASE IF NOT EXISTS reorder_db", $link))
+	if (mysqli_query($link, "CREATE DATABASE IF NOT EXISTS reorder_db"))
 		log_action("connected successfully: reorder_db");
 	else {
-		log_error("Error checking/creating reorder_db: " . mysql_error());
-		mysql_close($link);
+		log_error("Error checking/creating reorder_db: " . mysqli_error($link));
+		mysqli_close($link);
 		log_action("Disconnected Successfully...");
 		exit();
 	}
 			
-	mysql_select_db("reorder_db", $link);
+	mysqli_select_db($link, "reorder_db");
 	
 	$sql = "CREATE TABLE IF NOT EXISTS Reorders (" .
                     "rowID int NOT NULL AUTO_INCREMENT, " .
@@ -90,12 +90,12 @@ else {
                     "coming INT UNSIGNED, " .
                     "rocalc INT UNSIGNED)";
 		   	
-	if (mysql_query($sql,$link))
+	if (mysqli_query($link, $sql))
 		log_action("connected successfully: Reorders table");
         
 	else {
-		log_error("Error executing table check query: " . mysql_error());
-		mysql_close($link);
+		log_error("Error executing table check query: " . mysqli_error($link));
+		mysqli_close($link);
 		log_action("<br>Disconnected Successfully...");
 		exit();
 	}
@@ -106,11 +106,11 @@ else {
                     "resourceID INT UNSIGNED, ".
                     "name VARCHAR(50))";
     
-        if (mysql_query($sql,$link))
+        if (mysqli_query($link, $sql))
 		log_action("connected successfully: Classes table");
 	else {
-		log_error("Error executing LastUpdated table check query: " . mysql_error());
-		mysql_close($link);
+		log_error("Error executing LastUpdated table check query: " . mysqli_error($link));
+		mysqli_close($link);
 		log_action("Disconnected Successfully...");                
 		exit();
 	}
@@ -120,11 +120,11 @@ else {
                     "PRIMARY KEY (rowID), " .
                     "date DATETIME)";
     
-        if (mysql_query($sql,$link))
+        if (mysqli_query($link, $sql))
 		log_action("connected successfully: LastUpdated table");
 	else {
-		log_error("Error executing LastUpdated table check query: " . mysql_error());
-		mysql_close($link);
+		log_error("Error executing LastUpdated table check query: " . mysqli_error($link));
+		mysqli_close($link);
 		log_action("Disconnected Successfully...");                
 		exit();
 	}
@@ -133,34 +133,50 @@ else {
 
 function updatedbclass($array, $link){
     if ($array)
-    if (!$link)
-	exit("Could not connect" . mysql_error());
-    else {
-	log_action('connected successfully: mysql');
-        
-        mysql_select_db("reorder_db", $link);
-        
-        $updatequery = "UPDATE Classes SET name='".$array->name."' ".
-                        "WHERE resourceID='".$array->attributes()->id."'; ".
-                        "SELECT row_count();";
-            
-	if ($re = mysql_query($updatequery))
-            while ($result[] = mysql_fetch_array($re));
-            
-        if ($result[0][0]==1)
-            log_action('Record updated successfully: Class - '.$array->name);
+    {
+	    if (!$link)
+	    {
+		    exit("Could not connect. " . mysqli_errno($link) . ': ' . mysqli_error($link));
+	    }
+	    else
+	    {
+		    log_action('connected successfully: mysql');
 
-        else {
-            
-            $insertquery =  "INSERT INTO Classes (resourceID, name) ".
-                            "VALUES (".$array->attributes()->id.",".
-                                     "'".$array->name."')";
-                            
-            if (mysql_query($insertquery))
-                log_action('Record added successfully: Class - '.$array->name);
-            else
-                log_error("Error inserting class: " . mysql_error());
-        }
+		    mysqli_select_db($link, "reorder_db");
+
+		    $updatequery = "UPDATE Classes SET name='".$array->name."' ".
+			    "WHERE resourceID='".$array->attributes()->id."'; ".
+			    "SELECT row_count();";
+
+		    $result = array();
+		    $re = mysqli_query($link, $updatequery);
+
+		    if ($re > 0)
+		    {
+			    while ($result[] = mysqli_fetch_array($re));
+		    }
+		    elseif ($re != 0)
+		    {
+			    echo mysqli_errno($link) . ': ' . mysqli_error($link);
+			    debug_print_backtrace();
+			    log_error(mysqli_errno($link) . ': ' . mysqli_error($link));
+			    exit();
+		    }
+
+		    if (!empty($result) && isset($result[0][0]) && $result[0][0] == 1)
+			    log_action('Record updated successfully: Class - '.$array->name);
+		    else {
+
+			    $insertquery =  "INSERT INTO Classes (resourceID, name) ".
+				    "VALUES (".$array->attributes()->id.",".
+				    "'".$array->name."')";
+
+			    if (mysqli_query($link, $insertquery))
+				    log_action('Record added successfully: Class - '.$array->name);
+			    else
+				    log_error("Error inserting class: " . mysqli_error($link));
+		    }
+	    }
     }
 }
 
@@ -176,11 +192,11 @@ function updatedbclass($array, $link){
 function updatedbtable($array, $link){
     if ($array)
     if (!$link)
-	exit("Could not connect" . mysql_error());
+	exit("Could not connect" . mysqli_error($link));
     else {
 	log_action('connected successfully: mysql');
         
-        mysql_select_db("reorder_db", $link);
+        mysqli_select_db($link, "reorder_db");
         
         $rcalc = 0 + ($array->reorder->calc - ($array->inventory->coming_for_stock + $array->inventory->coming_for_customers));
         if ($rcalc < 0)
@@ -198,7 +214,7 @@ function updatedbtable($array, $link){
                                         "rocalc='".$rcalc."', ".    
                         "' WHERE resourceID='".$array->attributes()->id."'";
             
-	if (mysql_query($updatequery))
+	if (mysqli_query($link, $updatequery))
             log_action('Record updated successfully: Product Code '.$array->code);
 
         else {
@@ -217,10 +233,10 @@ function updatedbtable($array, $link){
                                      "'".intval($array->inventory->coming_for_stock + $array->inventory->coming_for_customers)."',".
                                      "'".intval($rcalc)."')";
                             
-            if (mysql_query($insertquery))
+            if (mysqli_query($link, $insertquery))
                 log_action('Record added successfully: Product Code - '.$array->code);
             else
-                log_error("Error inserting record: " . mysql_error());
+                log_error("Error inserting record: " . mysqli_error($link));
         }
         
         
@@ -241,29 +257,29 @@ function updatedbtable($array, $link){
 function updatedbdate($link){
     
     if (!$link)
-	exit("Could not connect" . mysql_error());
+	exit("Could not connect" . mysqli_error($link));
     else {
     
-        mysql_select_db("reorder_db", $link);
+        mysqli_select_db($link, "reorder_db");
         
         $datequery =    "INSERT INTO LastUpdated (date)".
                         "VALUES ('".date('Y-m-d H:i:s')."')";
         
-        if (mysql_query($datequery))
+        if (mysqli_query($link, $datequery))
             log_action("Record added successfully: Date - ".date('Y-m-d H:i:s'));
         else
-            log_error("Error inserting date: " . mysql_error());
+            log_error("Error inserting date: " . mysqli_error($link));
     }
 }
 
 
 function getreorderproducts($link, $desc, $class) {
     if (!$link)
-		exit("Could not connect" . mysql_error());
+		exit("Could not connect" . mysqli_error($link));
     else {
 	//echo "connected successfully: mysql<br>";
         
-        mysql_select_db("reorder_db", $link);
+        mysqli_select_db($link, "reorder_db");
            
         
         if ($desc){
@@ -283,19 +299,22 @@ function getreorderproducts($link, $desc, $class) {
                 $ccomp = 'NOT LIKE';
             $tq = "SELECT resourceID FROM Classes WHERE name ".$ccomp." '%".$class[0]."%';";
             //echo $tq.'<br>';
-            $res = mysql_query($tq);
+            $res = mysqli_query($link, $tq);
+	        $res1 = array();
+
             if ($res)
-                while ($res1[] = mysql_fetch_array($res));
+            {
+	            while ($res1[] = mysqli_fetch_array($res));
+            }
             else
-                log_error("Error running SELECT query: ". mysql_error());
-            
-            //print_r($res1);
-            //echo '<br><br>';
-            
+            {
+	            log_error("Error running SELECT query: ". mysqli_error($link));
+            }
+
             $q2 = " AND (classID='".$res1[0][0]."'";
             
             $x=1;
-            while ($res1[$x][0])
+            while (isset($res1[$x][0]))
                 $q2 .= " OR classID='".$res1[$x++][0]."'";
             
             $q2 .= ")";
@@ -305,14 +324,15 @@ function getreorderproducts($link, $desc, $class) {
             $q2 = null;
         
         $query = "SELECT * FROM Reorders WHERE ropoint >= available".$q1.$q2.";";
+	    $result = null;
         //echo $query."<br><br>";
         
-        $re = mysql_query($query);
+        $re = mysqli_query($link, $query);
         if ($re)
-            while ($result[] = mysql_fetch_array($re)) ;
+            while ($result[] = mysqli_fetch_array($re)) ;
         else
-            log_error("Error running SELECT query: ". mysql_error());
-            //echo "Error running SELECT query: ". mysql_error (). "<br><br>";
+            log_error("Error running SELECT query: ". mysqli_error($link));
+            //echo "Error running SELECT query: ". mysqli_error (). "<br><br>";
         
         return $result;
     }
@@ -321,26 +341,27 @@ function getreorderproducts($link, $desc, $class) {
 function getdatelastupdatedb($link){
 
     if (!$link)
-		exit("Could not connect" . mysql_error());
+		exit("Could not connect" . mysqli_error($link));
     else {
 		//echo "connected successfully: mysql<br>";
 
-        mysql_select_db("reorder_db", $link);
+        mysqli_select_db($link, "reorder_db");
         
         $query = "SELECT date FROM LastUpdated ORDER BY rowID DESC LIMIT 1;";
         
-        $re = mysql_query($query);
-        if ($re) {
-            while ($result[] = mysql_fetch_array($re)) ;
+        $re = mysqli_query($link, $query);
+        if ($re)
+        {
+            while ($result[] = mysqli_fetch_array($re)) ;
             return $result[0]['date'];
         }
-        else {
-            log_error("Error getting date: ". mysql_error ());
-            //echo "Error getting date: ". mysql_error (). "<br><br>";
+        else
+        {
+            log_error("Error getting date: ". mysqli_error($link));
             return 'n/a';
         }
 
-     //mysql_close($link);
+     //mysqli_close($link);
      
     }
 }

@@ -1,0 +1,12 @@
+@import url(http://fonts.googleapis.com/css?family=Patua+One);
+
+body { margin: 20px; }
+h1 { font-family: 'Patua One', 'serif'; }
+
+.form-inline { margin: 5px 0 5px; }
+.seperator { margin: 15px 0 15px; }
+.section { color: darkslategray; }
+.alert.alert-info { max-width: 415px; }
+.req { color: red; }
+
+input[type="text"], input[type="password"], input[type="number"] { max-width: 200px; }

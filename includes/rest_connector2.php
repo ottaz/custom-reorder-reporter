@@ -5,15 +5,17 @@
  * We need to load the HTTP_Request2 package
  *
  */
- 
-require_once 'HTTP/Request2.php';
-require_once 'HTTP/Request2/Response.php';
-require_once 'HTTP/Request2/CookieJar.php';
 
-class RESTConnector {
-	
-    private $root_url = "";
-    private $curr_url = "";
+class RESTConnector
+{
+    private $user_agent = 'com.acme.basicwidget/1.0';
+	private $privateID = 'X-PAPPID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
+	private $username;
+	private $password;
+    private $url;
+	private $domain;
+	private $method;
+	private $requestXml;
     private $httperror = "";
     private $exception = "";
     private $responseBody = "";
@@ -21,70 +23,56 @@ class RESTConnector {
     private $cookieJar = "";
     private $req = null;
     private $res = null;
+	private $arrCurl;
+
     
-    
-    public function __construct($root_url = "") {
-        $this->root_url = $this->curr_url = $root_url;
-        if ($root_url != "") {
-            $this->createRequest("GET");
-            $this->sendRequest();
-        }
-        return true;
+    public function __construct($root_url = "")
+    {
+	    $config = require(dirname(__FILE__).'/../config/main.php');
+	    $this->domain = sprintf(
+		    "https://%s:%d/api/",
+		    $config['lightspeedServer'],
+		    $config['lightspeedPort']
+	    );
+	    $this->username = $config['lightspeedUser'];
+	    $this->password = $config['lightspeedPass'];
+	    $this->arrCurl = array(
+		    'CURLOPT_HTTPAUTH' => CURLAUTH_BASIC,
+		    'CURLOPT_SSL_VERIFYPEER' => false,
+		    'CURLOPT_SSL_VERIFYHOST' => false,
+		    'CURLOPT_USERAGENT' => $this->user_agent,
+		    'CURLOPT_HTTPHEADER' => array($this->privateID),
+		    'CURLOPT_ENCODING' => 'gzip',
+		    'CURLOPT_USERPWD' => $this->username . ':' . $this->password,
+		    'CURLOPT_RETURNTRANSFER' => true,
+		    'CURLOPT_HEADER' => 1,
+		    'CURLINFO_HEADER_OUT' => true,
+		    'CURLOPT_FOLLOWLOCATION' => true
+	    );
+	    return true;
     }
     
-    public function createRequest($url, $method, $body = null, $mycookies, $user, $pass) {
-        $this->curr_url = $url;
-        $this->req = new HTTP_Request2($url);
-        
-		$this->req->setHeader("User-Agent", "com.xsilva.kevin.basicwidget/1.0"); // basic widget
-		$this->req->setHeader("X-PAPPID", "6765d08c-ea08-4f4f-a389-7503e299ad4f"); // basic widget
-        $this->req->setHeader("Accept-Encoding", "gzip"); 
-        // A valid username and password must also be sent to connect correctly
+    public function createRequest($url, $method = 'GET', $body = null, $mycookies = null)
+    {
+	    $this->url = $this->domain . $url;
+	    $this->requestXml = $body;
+	    $this->cookieJar = $mycookies;
 
-        $this->req->setAuth("api", "apiuser0");
-                
-        // LightSpeed Server uses a custom ssl certificate, so we disable this verification.
-        $this->req->setConfig('ssl_verify_peer', false);
-        
-        // Establish the Cookie Jar
-        $this->req->setCookieJar();
-    	    		
-        // If a cookie already exists, add it to the Cookie Jar to maintain the session
-        if ($mycookies!=null){
-        	$this->req->addCookie($mycookies['name'], $mycookies['value']);
-        }
-        
-        // Get current Cookie Jar
-        $this->cookieJar = $this->req->getCookieJar();
-        
-    	switch($method) {
+    	switch ($method)
+	    {
         	case "GET":
-                $this->req->setMethod(HTTP_Request2::METHOD_GET);
-                break;
             case "POST":
-            	//echo "Post?" . "<br><br>";
-                $this->req->setMethod(HTTP_Request2::METHOD_POST);
-                $this->setPostBody($body);
-                break;
             case "PUT":
-                $this->req->setMethod(HTTP_Request2::METHOD_PUT);
-                $this->setPostBody($body);              
-                break;
-            case "DELETE":
-                $this->req->setMethod(HTTP_Request2::METHOD_DELETE);
-                // to-do
-                break;
             case "LOCK":
-                $this->req->setMethod("LOCK");
-                break;
             case "UNLOCK":
-                $this->req->setMethod("UNLOCK");                
-                break;
-                
-            /*default: 
-            	$this->req->setMethod($method);
-            	break;
-            */
+//		    case "DELETE":
+		        $this->method = $method;
+		        $this->arrCurl['CURLOPT_CUSTOMREQUEST'] = $this->method;
+		        break;
+
+            default:
+				throw new Exception ($method . ' method not supported');
+	           	break;
         }
     }
     
@@ -100,37 +88,93 @@ class RESTConnector {
     	}
     }
     
-    public function sendRequest() {
-    	try {
-    		$this->res = $this->req->send();
-    		if (200 <= $this->res->getStatus() && 206 >= $this->res->getStatus()) {
-    			$this->responseBody = $this->res->getBody();
-    		}
-    		else {
-    			$this->httperror = "Unexpected HTTP Status: " . $this->res->getStatus() . " " . $this->res->getReasonPhrase();
-    		}
-                
-                //$this->headers = $this->res->getHeader();
-    	}
-    	catch (HTTP_Request2_Exception $e) {
-    		$this->exception = "Error: " . $e->getMessage();
-    	}
+    public function sendRequest()
+    {
+	    $ch = curl_init($this->url);
+
+	    if (!$ch)
+		    throw new Exception('Failed to initialize curl resource');
+
+	    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+	    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Ignore certificate check errors
+	    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // Ignore host check errors
+	    curl_setopt($ch, CURLOPT_USERAGENT, $this->user_agent);
+	    curl_setopt($ch, CURLOPT_HTTPHEADER, array($this->privateID));
+	    curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+	    curl_setopt($ch, CURLOPT_USERPWD, $this->username . ':' . $this->password);
+
+	    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $this->method);
+
+	    $fp = fopen(dirname(__FILE__).'/../logs/errorlog.txt', 'w');
+	    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	    curl_setopt($ch, CURLOPT_VERBOSE, true);
+	    curl_setopt($ch, CURLOPT_HEADER, 1);
+	    curl_setopt($ch, CURLINFO_HEADER_OUT, true);
+	    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+	    curl_setopt($ch, CURLOPT_STDERR, $fp);
+	    if (!is_null($this->cookieJar))
+	        curl_setopt($ch, CURLOPT_COOKIE, $this->cookieJar);
+
+	    $result = curl_exec($ch);
+	    $arrInfo = curl_getinfo($ch);
+
+	    if (!$result)
+		    throw new Exception(sprintf("cURL call failed\n%s\n%s", curl_error($ch), curl_errno($ch)));
+
+	    if (!isset($arrInfo['http_code']))
+		    throw new Exception(sprintf("An error occurred\n %s", $result."\n".print_r($arrInfo, true)));
+
+	    if ((integer)$arrInfo['http_code'] < 200 || (integer)$arrInfo['http_code'] > 206)
+	    {
+		    $this->setError($result);
+		    echo sprintf("Unexpected HTTP Status: %s\n", $this->httperror);
+		    var_dump($result);
+		    exit();
+	    }
+
+	    $this->setResponse($result);
+	    $this->setCookies($result);
     }
 
     public function getResponse() {
         return $this->responseBody;
     }
+
+	public function setResponse($result)
+	{
+		if (is_null($result))
+			$this->responseBody = null;
+		else
+			$this->responseBody = substr($result, strpos($result, '<?xml'));
+	}
     
     public function getError() {
         return $this->httperror;
     }
+
+	public function setError($result)
+	{
+		$endPos = strpos($result, 'content-type');
+		$startPos = strpos($result, 'HTTP/1.1 ') + strlen('HTTP/1.1 ');
+		$lengthError = $endPos - $startPos;
+		$this->httperror = substr($result, $startPos, $lengthError);
+	}
     
     public function getException() {
         return $this->exception;
     }
-    
-    public function getCookies() {
-    	return $this->cookieJar->getAll();
+
+	public function setCookies($result)
+	{
+		$endPos = strpos($result, '; Path');
+		$startPos = strpos($result, 'LS_SERVER_SESSION_ID=');
+		$lengthCookie = $endPos - $startPos;
+		$this->cookieJar = substr($result, $startPos, $lengthCookie);
+	}
+
+    public function getCookies()
+    {
+	    return $this->cookieJar;
     }
 }
 
