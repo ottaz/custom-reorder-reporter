@@ -75,14 +75,20 @@ class RESTConnector
 	           	break;
         }
     }
-    
-    private function setPostBody($data) {
+
+	/**
+	 * Deprecated function. Will eventually be removed or updated
+	 */
+	private function setPostBody($data) {
         if ($data != null) {
             $this->req->setBody($data);
         }
     }
-    
-    public function addHeader($header, $value) {
+
+	/**
+	 * Deprecated function. Will eventually be removed or updated
+	 */
+	public function addHeader($header, $value) {
     	if ($header != null &&  $value != null) {
     		$this->req->setHeader($header, $value);
     	}

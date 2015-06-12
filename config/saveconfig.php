@@ -17,7 +17,7 @@ if (isset($_POST['submit']))
 		);",
 		$_POST['lightspeedUser'],
 		$_POST['lightspeedPass'],
-		$_POST['lightspeedServer'] != '' ? $_POST['lightspeedServer'] != '' : 'localhost',
+		$_POST['lightspeedServer'] != '' ? $_POST['lightspeedServer'] : 'localhost',
 		$_POST['lightspeedPort'] != '' ? $_POST['lightspeedPort'] : 9630,
 		$_POST['mysqlUser'] != '' ? $_POST['mysqlUser'] : 'root',
 		$_POST['mysqlPass'],
